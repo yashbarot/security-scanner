@@ -13,6 +13,7 @@ class Ecosystem(Enum):
     RUBYGEMS = "RubyGems"
     CRATES_IO = "crates.io"
     PACKAGIST = "Packagist"
+    DOCKER = "Docker"
 
 
 class Severity(Enum):

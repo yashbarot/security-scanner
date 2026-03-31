@@ -2,6 +2,7 @@
 
 # Import all parsers to trigger @register_parser decorators
 from repo_security_scanner.parsers import (  # noqa: F401
+    docker,
     go,
     java,
     node,
