@@ -4,13 +4,15 @@
 
 ### Stop shipping vulnerabilities. Start scanning locally.
 
-A fast, zero-config CLI tool that scans your project dependencies for known security vulnerabilities — across **7 ecosystems**, powered by **free public vulnerability databases**.
+A fast, zero-config CLI tool that scans your project dependencies **and Dockerfiles** for known security vulnerabilities — across **8 ecosystems**, powered by **free public vulnerability databases**, with **AI-powered analysis** and **scheduled scanning**.
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Ecosystems](https://img.shields.io/badge/Ecosystems-7-blue?style=for-the-badge)](#supported-ecosystems)
-[![Vuln Sources](https://img.shields.io/badge/Vuln%20Sources-8%20Free%20APIs-orange?style=for-the-badge)](#vulnerability-intelligence-sources)
+[![Ecosystems](https://img.shields.io/badge/Ecosystems-8-blue?style=for-the-badge)](#supported-ecosystems)
+[![Tests](https://img.shields.io/badge/Tests-129%20passing-brightgreen?style=for-the-badge)](#running-tests)
+[![Vuln Sources](https://img.shields.io/badge/Vuln%20Sources-10%2B%20Free-orange?style=for-the-badge)](#vulnerability-intelligence-sources)
 [![Early Warning](https://img.shields.io/badge/Early%20Warning-CISA%20%7C%20HN%20%7C%20RSS-7c3aed?style=for-the-badge)](#early-warning-system)
+[![LLM Analysis](https://img.shields.io/badge/AI%20Analysis-Claude%20%7C%20GPT-2563eb?style=for-the-badge)](#ai-powered-security-analysis)
 
 ---
 
@@ -25,59 +27,63 @@ repo-scan /path/to/your/project
 
 ---
 
+## What's New in v0.3.0
+
+| Feature | What It Does | Unique? |
+|---------|-------------|---------|
+| **Dockerfile scanning** | Detects EOL base images (node:14, python:3.8, ubuntu:18.04), unpinned `:latest` tags, docker-compose support | Integrated into same scan pipeline |
+| **AI security analysis** | `--llm` flag sends findings to Claude/GPT for priority ranking, mitigation steps, and posture assessment | No other open-source scanner has this |
+| **Scheduled scanning** | `repo-scan schedule add/run` — cron-based daemon scans projects on schedule, alerts on new critical vulns | Solves the "code hasn't been touched in months" problem |
+| **Security release feeds** | Auto-monitors Node.js, Python, Django, Rails, Go, Spring official security release pages | **No other scanner does this** — catches patches before CVE databases update |
+
+> **v0.2.0 fixes** (included): OSV now returns full severity/descriptions/fix versions (was all UNKNOWN), CVSS v3.1 vector parsing, version range matching for GitHub Advisory, pnpm + bun lockfile support.
+
+---
+
 ## The Problem
 
 Open-source dependencies are under constant attack — and most teams find out **too late**.
 
-### Recent high-impact incidents that shook the ecosystem
+### Recent high-impact incidents
 
 | Year | Package | Ecosystem | What Happened | Impact |
 |------|---------|-----------|---------------|--------|
 | 2026 | **axios** | npm | SSRF + credential leak via crafted requests ([#10604](https://github.com/axios/axios/issues/10604)) | 60M+ weekly downloads affected |
 | 2026 | **litellm** | PyPI | Supply chain compromise — malicious code injected ([#24512](https://github.com/BerriAI/litellm/issues/24512)) | AI/ML pipelines across enterprises |
-| 2025 | **react** | npm | Pre-auth RCE in React Server Components via unsafe deserialization ([CVE-2025-55182](https://nvd.nist.gov/vuln/detail/CVE-2025-55182)) | CVSS 10.0, CISA KEV, actively exploited |
-| 2024 | **xz-utils** | Linux | Backdoor injected via social engineering of maintainer ([CVE-2024-3094](https://nvd.nist.gov/vuln/detail/CVE-2024-3094)) | Nearly every Linux distro at risk |
-| 2023 | **jsonwebtoken** | npm | JWT signature bypass vulnerability ([CVE-2022-23529](https://nvd.nist.gov/vuln/detail/CVE-2022-23529)) | 36M+ weekly downloads |
+| 2025 | **react** | npm | Pre-auth RCE in React Server Components ([CVE-2025-55182](https://nvd.nist.gov/vuln/detail/CVE-2025-55182)) | CVSS 10.0, CISA KEV, actively exploited |
+| 2024 | **xz-utils** | Linux | Backdoor injected via social engineering ([CVE-2024-3094](https://nvd.nist.gov/vuln/detail/CVE-2024-3094)) | Nearly every Linux distro at risk |
+| 2023 | **jsonwebtoken** | npm | JWT signature bypass ([CVE-2022-23529](https://nvd.nist.gov/vuln/detail/CVE-2022-23529)) | 36M+ weekly downloads |
 | 2021 | **log4j** | Maven | Remote code execution — Log4Shell ([CVE-2021-44228](https://nvd.nist.gov/vuln/detail/CVE-2021-44228)) | ~93% of enterprise cloud environments |
 
-### Current bottlenecks teams face
+### Current bottlenecks
 
-```
-  "We didn't know our dependency had a CVE until production was breached."
-  "Our scanner is locked behind an enterprise paywall."
-  "It only works with npm — we have Python and Go services too."
-  "Setting it up took longer than fixing the actual vulnerabilities."
-```
-
-**The reality:**
-
-- **New CVEs are published daily** — over 35,000 in 2025 alone ([source](https://nvd.nist.gov/))
-- **70% of codebases** contain open-source vulnerabilities ([Synopsys OSSRA 2024](https://www.synopsys.com/software-integrity/resources/analyst-reports/open-source-security-risk-analysis.html))
-- **Most teams rely on `npm audit` or `pip-audit`** — but these are **single-ecosystem** and miss cross-project risks
-- **Enterprise scanners (Snyk, Sonatype, etc.)** are powerful but expensive and complex to set up
-- **Developers don't scan proactively** because existing tools require too much config, accounts, or CI pipeline changes
+- **New CVEs are published daily** — over 35,000 in 2025 alone
+- **70% of codebases** contain open-source vulnerabilities
+- **Most scanners are single-ecosystem** — npm audit only checks npm, pip-audit only checks Python
+- **Enterprise scanners** are powerful but expensive and complex
+- **No one monitors official security release pages** (Node.js, Python, Django, etc.) proactively
 
 ---
 
 ## The Solution
 
-`security-scanner` takes a different approach:
-
 ```
 No accounts. No API keys. No config files. No paywalls.
-Just point it at any project directory and get instant results.
+Point it at any project directory and get instant results.
 ```
 
 <div align="center">
 
 | What You Get | Why It Matters |
 |:-------------|:---------------|
-| **One command scans everything** | No separate tools per ecosystem |
-| **16+ dependency file formats** | Catches what single-ecosystem scanners miss |
-| **Free vulnerability intelligence** | OSV (Google) + GitHub Advisory — no enterprise license needed |
-| **Actionable fix recommendations** | Tells you exactly which version to upgrade to |
+| **8 ecosystems + Docker in one command** | No separate tools per ecosystem |
+| **20+ dependency file formats** | Catches what single-ecosystem scanners miss |
+| **10+ free vulnerability sources** | OSV, GitHub Advisory, CISA KEV, HN, RSS, registries, security feeds |
+| **AI-powered analysis** | LLM explains what to fix first and why |
+| **Dockerfile scanning** | Catches EOL base images and unpinned tags |
+| **Scheduled scanning** | Cron-based daemon alerts on new vulns in active projects |
+| **Official security release monitoring** | Catches patches before CVE databases update |
 | **CI-friendly exit codes** | Drop into any pipeline in 2 lines |
-| **Offline-first dependency parsing** | No data leaves your machine until vuln lookup |
 
 </div>
 
@@ -97,11 +103,9 @@ cd security-scanner
 pip install .
 ```
 
-> **Tip**: For CI/production, you can pin to a specific version tag: `pip install git+...@v0.2.0`. Check [Releases](https://github.com/yashbarot/security-scanner/releases) for available versions.
+> **Tip**: For CI/production, pin to a specific version: `pip install git+...@v0.3.0`. See [Releases](https://github.com/yashbarot/security-scanner/releases).
 
 ### Update to Latest
-
-If you already have the repo cloned:
 
 ```bash
 cd security-scanner
@@ -112,7 +116,7 @@ pip install .
 To switch to a specific version:
 
 ```bash
-git checkout v0.2.0
+git checkout v0.3.0
 pip install .
 ```
 
@@ -130,16 +134,12 @@ python -c "import repo_security_scanner; print(repo_security_scanner.__version__
 repo-scan .                              # scan current directory
 repo-scan /path/to/project               # scan any local project
 repo-scan . -s high                      # only critical & high severity
-repo-scan . --format json -o report.json # export as JSON
-repo-scan . --format html -o report.html # export as HTML report
-repo-scan . --early-warning              # enable early warning (CISA, HN, RSS, registry)
-repo-scan --help                         # full help with all options and examples
+repo-scan . --format json -o report.json # JSON report
+repo-scan . --format html -o report.html # HTML report
+repo-scan . --early-warning              # enable early warning sources
+repo-scan . --llm                        # AI-powered security analysis
+repo-scan --help                         # full help with all options
 ```
-
-That's it. No setup, no accounts, no config files.
-
-> After every scan, `repo-scan` shows contextual tips for features you haven't used yet.
-> Run `repo-scan --help` anytime for the full reference with examples.
 
 ---
 
@@ -147,40 +147,156 @@ That's it. No setup, no accounts, no config files.
 
 ```
 ╭──────────────────────────── Security Scan Results ─────────────────────────────╮
-│ Found 5 vulnerabilities in 3 of 42 dependencies                               │
+│ Found 5 confirmed vulnerabilities in 3 of 42 dependencies                      │
 │   Critical: 1  High: 2  Medium: 1  Low: 1                                     │
 ╰────────────────────────────────────────────────────────────────────────────────╯
 
+Confirmed Vulnerabilities
 ┏━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Package       ┃ Version ┃ Ecosystem ┃ Severity ┃ Vulnerability               ┃ Fix     ┃
 ┡━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ axios         │ 0.21.1  │ npm       │ CRITICAL │ CVE-2023-45857              │ 1.6.0   │
-│               │         │           │          │ SSRF via XSRF-TOKEN header  │         │
+│ node          │ 14.21   │ Docker    │ HIGH     │ DOCKER-EOL-node-14.21       │ 22      │
+│               │         │           │          │ Base image is end-of-life   │         │
+├───────────────┼─────────┼───────────┼──────────┼─────────────────────────────┼─────────┤
+│ axios         │ 1.6.0   │ npm       │ HIGH     │ GHSA-8hc4-vh64-cxmj        │ 1.8.2   │
+│               │         │           │          │ SSRF + credential leak      │         │
 ├───────────────┼─────────┼───────────┼──────────┼─────────────────────────────┼─────────┤
 │ flask         │ 2.2.0   │ PyPI      │ HIGH     │ CVE-2023-30861              │ 2.3.2   │
 │               │         │           │          │ Cookie injection vuln       │         │
-├───────────────┼─────────┼───────────┼──────────┼─────────────────────────────┼─────────┤
-│ spring-core   │ 5.3.20  │ Maven     │ HIGH     │ CVE-2022-22965              │ 5.3.22  │
-│               │         │           │          │ Spring4Shell RCE            │         │
-├───────────────┼─────────┼───────────┼──────────┼─────────────────────────────┼─────────┤
-│ lodash        │ 4.17.20 │ npm       │ MEDIUM   │ CVE-2021-23337              │ 4.17.21 │
-│               │         │           │          │ Prototype pollution         │         │
 └───────────────┴─────────┴───────────┴──────────┴─────────────────────────────┴─────────┘
 
 Action Items:
-  CRITICAL  Upgrade axios to 1.6.0 (fixes CVE-2023-45857)
+  HIGH      Upgrade node base image to 22 (fixes DOCKER-EOL-node-14.21)
+  HIGH      Upgrade axios to 1.8.2 (fixes GHSA-8hc4-vh64-cxmj)
   HIGH      Upgrade flask to 2.3.2 (fixes CVE-2023-30861)
-  HIGH      Upgrade spring-core to 5.3.22 (fixes CVE-2022-22965)
 ```
 
-### HTML Report
+---
 
-Running `repo-scan . --format html -o report.html` generates a clean, shareable report:
+## AI-Powered Security Analysis
 
-- Color-coded severity badges
-- Summary dashboard with vulnerability counts
-- Clickable CVE/GHSA references
-- Suitable for sharing with team leads and security reviewers
+Add `--llm` to any scan for AI-powered vulnerability analysis:
+
+```bash
+repo-scan . --llm                        # uses Claude (default)
+repo-scan . --llm --llm-provider openai  # uses GPT
+```
+
+The AI provides:
+- **Priority ranking** of what to fix first with reasoning
+- **Specific mitigation steps** for each critical/high finding
+- **Security posture assessment** (Good / Fair / Poor / Critical)
+
+```
+╭──────────────────────── AI Security Analysis ────────────────────────╮
+│ ## Priority Ranking                                                  │
+│ 1. **axios 1.6.0** (HIGH) — Fix immediately. SSRF allows            │
+│    credential leakage. Run: npm install axios@1.8.2                  │
+│ 2. **node:14** (HIGH) — EOL since April 2023, no security           │
+│    patches. Update Dockerfile FROM to node:22-alpine                 │
+│                                                                      │
+│ ## Security Posture: FAIR                                            │
+│ 2 high-severity issues require immediate attention.                  │
+│ No critical findings. Medium/low issues are acceptable short-term.   │
+╰──────────────────────────────────────────────────────────────────────╯
+```
+
+**Requirements**: Set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` environment variable. No API key = scan runs normally without AI analysis.
+
+---
+
+## Dockerfile & Docker Compose Scanning
+
+The scanner **automatically detects** Dockerfiles and docker-compose files — no flags needed:
+
+```dockerfile
+# This gets flagged:
+FROM node:14            # EOL — suggests upgrading to node:22
+FROM python:3.8         # EOL — suggests upgrading to python:3.13
+FROM ubuntu:18.04       # EOL — suggests upgrading to ubuntu:24.04
+FROM nginx:latest       # Unpinned — suggests pinning to specific version
+FROM nginx              # Unpinned — same warning
+```
+
+### Supported Docker files
+
+| File | What's Detected |
+|------|----------------|
+| `Dockerfile` | FROM instructions — base image name, version, EOL status |
+| `Dockerfile.prod` / `.dev` / `.staging` | Same as above |
+| `docker-compose.yml` / `compose.yml` | `image:` directives in services |
+
+### EOL base images detected
+
+| Image | EOL Versions | Suggested Replacement |
+|-------|-------------|----------------------|
+| node | 10, 12, 14, 16 | 22 |
+| python | 2.7, 3.6, 3.7, 3.8 | 3.13 |
+| ubuntu | 14.04, 16.04, 18.04, 20.04 | 24.04 |
+| alpine | 3.14, 3.15, 3.16, 3.17 | 3.20 |
+| nginx | 1.18, 1.19, 1.20, 1.21 | 1.27 |
+| golang | 1.18, 1.19, 1.20 | 1.22 |
+| ruby | 2.6, 2.7, 3.0 | 3.3 |
+| php | 7.4, 8.0 | 8.3 |
+| postgres | 11, 12, 13 | 16 |
+| mysql | 5.7 | 8.0 |
+| redis | 5, 6 | 7 |
+| debian | stretch, buster, jessie | bookworm |
+
+---
+
+## Official Security Release Feeds
+
+**No other scanner does this.** The tool automatically monitors official security release pages from major runtimes and frameworks your project uses:
+
+| Feed | When Active | What It Catches |
+|------|------------|-----------------|
+| [Node.js Vulnerabilities](https://nodejs.org/en/blog/vulnerability/) | Project has `package.json` | Node.js runtime security patches |
+| [Python Security Blog](https://blog.python.org/) | Project has `requirements.txt` / `pyproject.toml` | CPython security advisories |
+| [Django Security Releases](https://www.djangoproject.com/weblog/) | Project uses Django | Django framework patches |
+| [Rails Security](https://rubyonrails.org/) | Project has `Gemfile` | Rails security patches |
+| [Go Security](https://groups.google.com/g/golang-announce) | Project has `go.mod` | Go runtime announcements |
+| [Spring Security](https://spring.io/blog) | Project uses Spring | Spring Framework CVEs |
+
+These feeds are checked automatically (cached 4 hours). They announce patches **before CVE databases update** — giving you a head start.
+
+---
+
+## Scheduled Scanning
+
+For projects that don't change often but still need monitoring (the "we developed it and no one touched it" problem):
+
+```bash
+# Add a project to scan daily at 8 AM
+repo-scan schedule add /path/to/project --cron "0 8 * * *" --name "my-project"
+
+# List all scheduled scans
+repo-scan schedule list
+
+# Remove a schedule
+repo-scan schedule remove my-project
+
+# Start the daemon (runs in foreground, Ctrl+C to stop)
+repo-scan schedule run
+```
+
+### How it works
+
+- Config stored at `~/.config/security-scanner/schedules.json`
+- Results saved to `~/.config/security-scanner/results/`
+- Alerts written to `~/.config/security-scanner/alerts.log` when new critical/high vulns are found
+- Supports standard 5-field cron expressions (`* * * * *`)
+- Each scan runs with OSV database (full hydration)
+
+### Example cron expressions
+
+| Expression | Schedule |
+|-----------|----------|
+| `0 8 * * *` | Every day at 8 AM |
+| `0 8 * * 1` | Every Monday at 8 AM |
+| `*/30 * * * *` | Every 30 minutes |
+| `0 8,18 * * *` | Twice daily at 8 AM and 6 PM |
+| `0 0 1 * *` | First day of every month |
 
 ---
 
@@ -197,161 +313,80 @@ Running `repo-scan . --format html -o report.html` generates a clean, shareable 
 | **Ruby** | `Gemfile` | `Gemfile.lock` |
 | **Rust** | `Cargo.toml` | `Cargo.lock` |
 | **PHP** | `composer.json` | `composer.lock` |
+| **Docker** | `Dockerfile` `Dockerfile.*` | `docker-compose.yml` `compose.yml` |
 
 </div>
 
+> **All 4 Node.js package managers**: npm, yarn, pnpm, and bun lock files are supported.
+>
 > **Lock files get priority.** When both a manifest and lock file exist, the scanner uses the lock file's exact versions for more accurate vulnerability matching.
-
----
-
-## Vulnerability Intelligence Sources
-
-The scanner queries **two free, public vulnerability databases** and cross-references findings for accuracy:
-
-### Primary: Google OSV
-
-[OSV (Open Source Vulnerabilities)](https://osv.dev/) is Google's open, distributed vulnerability database.
-
-- **No authentication required**
-- **No rate limits**
-- **30+ ecosystems** covered
-- Aggregates data from: GitHub Advisory, PyPI Advisory, RustSec, Go Vulnerability Database, and more
-- Batch query API — scans hundreds of dependencies in a single request
-
-### Secondary: GitHub Advisory Database
-
-[GitHub Advisory Database](https://github.com/advisories) provides peer-reviewed security advisories.
-
-- Works without authentication (60 requests/hour)
-- Set `GITHUB_TOKEN` for 5,000 requests/hour
-- Used to **cross-reference** critical and high severity findings from OSV
-
-### How cross-referencing works
-
-```
-Dependencies ──> OSV Batch Query ──> All vulnerabilities found
-                                          │
-                            Critical/High findings
-                                          │
-                                          v
-                              GitHub Advisory ──> Cross-reference
-                                          │
-                                          v
-                              Merged, deduplicated results
-                                     with fix versions
-```
 
 ---
 
 ## Early Warning System
 
-> **The problem with CVE databases**: Official sources (OSV, NVD, GitHub Advisory) lag behind real-world disclosures by **hours to weeks**. The [axios npm compromise](https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan), the [litellm supply chain attack](https://github.com/BerriAI/litellm/issues/24512), the xz-utils backdoor — these all surfaced on blogs, Twitter, and GitHub Issues long before any CVE was assigned.
-
-`security-scanner` solves this with the `--early-warning` flag:
+> Official CVE databases lag behind real-world disclosures by **hours to weeks**. The [axios compromise](https://github.com/axios/axios/issues/10604), the [litellm supply chain attack](https://github.com/BerriAI/litellm/issues/24512), the xz-utils backdoor — all surfaced on blogs, Twitter, and GitHub Issues long before any CVE was assigned.
 
 ```bash
 repo-scan . --early-warning
 ```
 
-This activates **6 additional free intelligence sources** that scan the web for mentions of your specific dependencies:
+This activates **6 additional free intelligence sources**:
 
-| Source | What It Catches | Signal Type | Auth Required |
-|--------|----------------|-------------|---------------|
-| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Government-verified actively exploited vulnerabilities | Confirmed | No |
+| Source | What It Catches | Signal Type | Auth |
+|--------|----------------|-------------|------|
+| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Government-verified actively exploited vulns | Confirmed | No |
 | **PyPI / npm Registry** | Yanked or deprecated package versions | High Signal | No |
-| [Hacker News](https://news.ycombinator.com) | Community-reported security threats (last 7 days) | Early Signal | No |
-| [GitHub Issues](https://github.com) | Security issues filed against your dependencies | Early Signal | Optional |
-| **Security Blog RSS** | Coverage from Bleeping Computer, Google Security Blog | Early Signal | No |
-| [OpenCVE](https://www.opencve.io) | Curated CVE data (optional, needs free account) | Confirmed | Yes |
-
-### How it works
-
-```
-Your Dependencies ──> Filter (skip generic names like "utils", "test")
-                          │
-          ┌───────────────┼───────────────┐
-          v               v               v
-     CISA KEV       Hacker News      Registry Health
-     (confirmed)    (7-day window)   (yanked/deprecated)
-          │               │               │
-          v               v               v
-     GitHub Issues   RSS Feeds       OpenCVE
-     (scored 0-1)    (14-day window) (optional)
-          │               │               │
-          └───────┬───────┴───────┬───────┘
-                  v               v
-          Noise Filters     Relevance Scoring
-          (word boundary,   (>= 0.5 threshold)
-           keyword match)
-                  │
-                  v
-          ┌─────────────────────────┐
-          │  Two-Section Output     │
-          │  ┌───────────────────┐  │
-          │  │ Confirmed CVEs    │  │
-          │  ├───────────────────┤  │
-          │  │ Early Signals     │  │
-          │  └───────────────────┘  │
-          └─────────────────────────┘
-```
-
-### Example output with early warning
-
-```
-╭──────────────────────────── Security Scan Results ─────────────────────────────╮
-│ Found 3 confirmed vulnerabilities in 2 of 15 dependencies                      │
-│   Critical: 1  High: 1  Medium: 1  Low: 0                                     │
-│   Early Warning Signals: 2                                                     │
-╰────────────────────────────────────────────────────────────────────────────────╯
-
-Confirmed Vulnerabilities
-┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┓
-┃ Package     ┃ Version ┃ Ecosystem ┃ Severity ┃ Vulnerability            ┃ Fix    ┃
-┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━┩
-│ axios       │ 0.21.1  │ npm       │ CRITICAL │ CVE-2023-45857           │ 1.6.0  │
-│             │         │           │          │ SSRF via XSRF-TOKEN      │        │
-└─────────────┴─────────┴───────────┴──────────┴──────────────────────────┴────────┘
-
-Early Warning Signals
-These are unconfirmed signals from web sources — investigate before acting.
-
-┏━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Package     ┃ Version ┃ Signal     ┃ Source        ┃ Details                   ┃
-┡━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ litellm     │ 1.46.0  │ GH ISSUE   │ GitHub Issues │ Supply chain compromise   │
-│ axios       │ 0.21.1  │ HN MENTION │ Hacker News   │ Axios compromised on npm  │
-└─────────────┴─────────┴────────────┴───────────────┴───────────────────────────┘
-```
+| [Hacker News](https://news.ycombinator.com) | Community-reported threats (7-day window) | Early Signal | No |
+| [GitHub Issues](https://github.com) | Security issues filed against your deps | Early Signal | Optional |
+| **Security Blog RSS** | Bleeping Computer, Google Security Blog | Early Signal | No |
+| [OpenCVE](https://www.opencve.io) | Curated CVE data (optional) | Confirmed | Yes |
 
 ### Noise reduction
 
-Early warning sources are inherently noisy. The scanner uses multiple strategies to minimize false positives:
-
-- **Generic name blocklist**: Skips web searches for packages named "utils", "core", "test", etc.
-- **Minimum name length**: Ignores 1-2 character package names
-- **Word boundary matching**: `axios` won't match "maxios" or "axiosify"
-- **Security keyword co-occurrence**: Package name must appear alongside security terms (CVE, vulnerability, exploit, etc.)
-- **Relevance scoring**: Each match is scored 0.0-1.0 based on recency, keyword density, community engagement, and name prominence. Only results scoring >= 0.5 are shown.
+- **Generic name blocklist**: Skips "utils", "core", "test", etc.
+- **Word boundary matching**: `axios` won't match "maxios"
+- **Security keyword co-occurrence**: Name must appear alongside CVE/vulnerability/exploit terms
+- **Relevance scoring**: 0.0-1.0 scale, only >= 0.5 shown
 
 ### Caching
-
-Early warning results are cached locally at `~/.cache/security-scanner/` to avoid repeated network calls:
 
 | Source | Cache Duration |
 |--------|---------------|
 | CISA KEV | 6 hours |
+| Security release feeds | 4 hours |
 | RSS feeds | 2 hours |
 | Registry health | 1 hour |
-| Hacker News | 30 minutes |
-| GitHub Issues | 30 minutes |
+| Hacker News / GitHub Issues | 30 minutes |
 
-Clear the cache: `repo-scan . --clear-cache`
+---
+
+## Vulnerability Intelligence Sources
+
+All sources are **free** and require **no authentication** (tokens are optional for higher rate limits):
+
+### Always Active (every scan)
+
+| Source | What It Provides |
+|--------|-----------------|
+| [Google OSV](https://osv.dev/) | Primary vuln database — batch query, 30+ ecosystems, full hydration via `/v1/vulns/{id}` |
+| [GitHub Advisory](https://github.com/advisories) | Cross-reference with version range matching |
+| **Docker EOL Database** | Hardcoded EOL detection for 12 popular base images |
+| **Official Security Feeds** | Node.js, Python, Django, Rails, Go, Spring release monitoring |
+
+### Early Warning (`--early-warning` flag)
+
+CISA KEV, Hacker News, GitHub Issues, RSS feeds, PyPI/npm registry health, OpenCVE
+
+### AI Analysis (`--llm` flag)
+
+Claude (Anthropic) or GPT (OpenAI) — priority ranking, mitigation steps, posture assessment
 
 ---
 
 ## CLI Reference
 
-Run `repo-scan --help` for the full built-in reference. Here's an overview:
+Run `repo-scan --help` for the full built-in reference.
 
 ```
 Usage: repo-scan [DIRECTORY] [OPTIONS]
@@ -368,35 +403,31 @@ Output Options:
 Scan Options:
       --github-token TOKEN   GitHub token for higher rate limits (or GITHUB_TOKEN env var)
       --skip-crossref        Skip GitHub Advisory cross-reference (faster, OSV only)
-      --early-warning        Enable early warning sources (CISA KEV, Hacker News,
-                             GitHub Issues, RSS feeds, PyPI/npm registry health)
+      --early-warning        Enable early warning intelligence sources
+      --llm                  Enable AI-powered security analysis (requires API key)
+      --llm-provider         LLM provider: anthropic (default) or openai
       --clear-cache          Clear cached early warning data
 
+Schedule Commands:
+  repo-scan schedule add PATH --cron EXPR --name NAME
+  repo-scan schedule list
+  repo-scan schedule remove NAME
+  repo-scan schedule run                   Start the cron daemon
+
 Help:
-  -h, --help                 Show detailed help with all options, examples,
-                             supported ecosystems, and environment variables
-```
-
-### Contextual Help
-
-After every scan, `repo-scan` shows smart tips based on what you're doing:
-
-```
-Tip: Use --early-warning to detect threats before they hit CVE databases
-Tip: Use -f json -o report.json or -f html -o report.html to export reports
-Tip: Set GITHUB_TOKEN env var for higher API rate limits
-Run repo-scan --help for all options and examples
+  -h, --help                 Show detailed help with examples
 ```
 
 ### Environment Variables (all optional)
 
 > None of these are required. Everything works out of the box with zero configuration.
 
-| Variable | Required | Purpose | Without it |
-|----------|----------|---------|------------|
-| `GITHUB_TOKEN` | No | Higher API rate limits (60/hr -> 5,000/hr) | Works fine at 60 req/hr |
-| `OPENCVE_USER` | No | OpenCVE username for `--early-warning` | OpenCVE silently skipped |
-| `OPENCVE_PASS` | No | OpenCVE password for `--early-warning` | OpenCVE silently skipped |
+| Variable | Purpose | Without it |
+|----------|---------|------------|
+| `GITHUB_TOKEN` | Higher API rate limits (60/hr -> 5,000/hr) | Works fine at 60 req/hr |
+| `ANTHROPIC_API_KEY` | AI analysis via Claude (`--llm`) | LLM features skipped |
+| `OPENAI_API_KEY` | AI analysis via GPT (`--llm --llm-provider openai`) | LLM features skipped |
+| `OPENCVE_USER` / `OPENCVE_PASS` | OpenCVE source for `--early-warning` | OpenCVE silently skipped |
 
 ### Exit Codes
 
@@ -404,13 +435,11 @@ Run repo-scan --help for all options and examples
 |:----:|---------|-------------|
 | `0` | No critical/high vulnerabilities | Pipeline **passes** |
 | `1` | Critical or high vulnerabilities found | Pipeline **fails** |
-| `2` | Runtime error (bad path, network failure) | Pipeline **errors** |
+| `2` | Runtime error | Pipeline **errors** |
 
 ---
 
 ## Use in CI/CD
-
-Drop into any CI pipeline with two lines:
 
 ### GitHub Actions
 
@@ -440,8 +469,27 @@ security-scan:
       - repo-scan . -s high
 ```
 
-> **Tip**: Pin to a specific version tag (e.g. `@v0.2.0`) in CI for reproducible builds.
-> The exit code `1` on critical/high findings will automatically fail the pipeline step.
+> The exit code `1` on critical/high findings automatically fails the pipeline step.
+
+---
+
+## Comparison with Existing Tools
+
+| Feature | security-scanner | npm audit | pip-audit | Snyk | Dependabot | osv-scanner |
+|---------|:----:|:---------:|:---------:|:----:|:----------:|:-----------:|
+| Multi-ecosystem | **8** | 1 | 1 | Many | Many | 11+ |
+| Dockerfile scanning | **Yes** | No | No | No | No | Yes |
+| Free & open source | **Yes** | Yes | Yes | Freemium | Free | Yes |
+| No account required | **Yes** | Yes | Yes | No | No | Yes |
+| AI-powered analysis | **Yes** | No | No | No | No | No |
+| Scheduled scanning | **Yes** | No | No | No | No | No |
+| Early warning (web intel) | **Yes** | No | No | No | No | No |
+| Security release feeds | **Yes** | No | No | No | No | No |
+| Registry health checks | **Yes** | No | No | No | No | No |
+| Cross-references sources | **Yes** | No | No | Yes | No | No |
+| Version range matching | **Yes** | Yes | Yes | Yes | Yes | Yes |
+| CVSS v3.1 parsing | **Yes** | No | No | Yes | No | Yes |
+| JSON/HTML reports | **Yes** | JSON | JSON | Yes | No | Yes |
 
 ---
 
@@ -452,32 +500,33 @@ security-scan:
          │
          v
  ┌───────────────────┐
- │  File Discovery    │  Walk directory tree, match against
- │                    │  16+ known dependency filenames
+ │  File Discovery    │  Walk tree, match 20+ dependency filenames
+ │                    │  + Dockerfiles + docker-compose
  └────────┬──────────┘
           │
           v
  ┌───────────────────┐
- │  Dependency        │  Parse each file format with
- │  Parsing           │  ecosystem-specific parsers
+ │  Parsing           │  8 ecosystem parsers + Docker parser
+ │                    │  Lock file versions override manifests
  └────────┬──────────┘
           │
           v
  ┌───────────────────┐
- │  Deduplication     │  Lock file versions override
- │                    │  manifest version ranges
+ │  OSV Batch Query   │  Batch API → Parallel hydration via
+ │  + Hydration       │  /v1/vulns/{id} (10 concurrent workers)
  └────────┬──────────┘
           │
           v
  ┌───────────────────┐
- │  OSV Batch Query   │  Single API call for all deps
- │  (Primary)         │  — no rate limits, no auth
+ │  Cross-Reference   │  GitHub Advisory (version range matching)
+ │  + Docker EOL      │  + Docker image EOL/unpinned detection
+ │  + Security Feeds  │  + Official runtime security releases
  └────────┬──────────┘
           │
           v
  ┌───────────────────┐
- │  GitHub Advisory   │  Cross-reference critical/high
- │  (Secondary)       │  findings for accuracy
+ │  AI Analysis       │  Optional: Claude/GPT priority ranking
+ │  (--llm)           │  + mitigation steps + posture assessment
  └────────┬──────────┘
           │
           v
@@ -489,38 +538,14 @@ security-scan:
 
 ---
 
-## Comparison with Existing Tools
-
-| Feature | security-scanner | npm audit | pip-audit | Snyk | Dependabot |
-|---------|:--------------------:|:---------:|:---------:|:----:|:----------:|
-| Multi-ecosystem | **7** | 1 | 1 | Many | Many |
-| Free & open source | Yes | Yes | Yes | Freemium | Free (GitHub only) |
-| No account required | **Yes** | Yes | Yes | No | No |
-| No config required | **Yes** | Yes | Yes | No | No |
-| Works locally | **Yes** | Yes | Yes | Yes | No |
-| CI-friendly exit codes | **Yes** | Yes | Yes | Yes | N/A |
-| Cross-references sources | **Yes** | No | No | Yes | No |
-| Early warning (web intel) | **Yes** | No | No | No | No |
-| JSON/HTML reports | **Yes** | JSON | JSON | Yes | No |
-| Single command | **Yes** | Yes | Yes | No | No |
-
----
-
 ## Development
 
 ```bash
-# Clone
 git clone https://github.com/yashbarot/security-scanner.git
 cd security-scanner
-
-# Install in dev mode
 pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Run tests with verbose output
-pytest -v
+pytest          # 129 tests
+pytest -v       # verbose
 ```
 
 ### Project Structure
@@ -528,30 +553,39 @@ pytest -v
 ```
 src/repo_security_scanner/
 ├── models.py                 # Core data models (Dependency, Vulnerability, ScanReport)
-├── scanner.py                # Orchestrator — ties everything together
-├── cli.py                    # CLI interface with rich terminal output
-├── parsers/                  # Dependency file parsers (one per ecosystem)
+├── scanner.py                # Orchestrator — walks dirs, parses, queries, reports
+├── cli.py                    # CLI with rich output + schedule subcommand
+├── llm.py                    # AI analysis (Claude + GPT)
+├── scheduler.py              # Cron-based scheduled scanning daemon
+├── cache.py                  # File-based cache for early warning sources
+├── filters.py                # Noise reduction for web-based sources
+├── version_utils.py          # Semver + PEP 440 version comparison
+├── parsers/                  # Dependency file parsers
 │   ├── python.py             #   requirements.txt, pyproject.toml, Pipfile.lock, poetry.lock
 │   ├── node.py               #   package.json, package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lock
 │   ├── java.py               #   pom.xml, build.gradle
 │   ├── go.py                 #   go.mod
 │   ├── ruby.py               #   Gemfile, Gemfile.lock
 │   ├── rust.py               #   Cargo.toml, Cargo.lock
-│   └── php.py                #   composer.json, composer.lock
+│   ├── php.py                #   composer.json, composer.lock
+│   └── docker.py             #   Dockerfile, docker-compose.yml
 ├── vulndb/                   # Vulnerability database clients
-│   ├── osv.py                #   Google OSV (primary)
-│   └── github_advisory.py    #   GitHub Advisory (secondary)
+│   ├── osv.py                #   Google OSV (primary, with parallel hydration)
+│   ├── github_advisory.py    #   GitHub Advisory (with version range matching)
+│   ├── docker_images.py      #   Docker EOL/unpinned detection
+│   ├── security_releases.py  #   Official runtime security release feeds
+│   ├── cisa_kev.py           #   CISA Known Exploited Vulnerabilities
+│   ├── registry_health.py    #   PyPI yanked / npm deprecated detection
+│   ├── hackernews.py         #   Hacker News security mentions
+│   ├── github_issues.py      #   GitHub Issues security search
+│   ├── rss_feeds.py          #   Security blog RSS feeds
+│   └── opencve.py            #   OpenCVE (optional)
 └── reports/                  # Report generators
-    ├── json_report.py        #   JSON export
-    └── html_report.py        #   HTML export
+    ├── json_report.py        #   JSON export (with optional LLM analysis)
+    └── html_report.py        #   HTML export (with optional LLM analysis)
 ```
 
 ### Adding a New Ecosystem Parser
-
-1. Create `src/repo_security_scanner/parsers/your_ecosystem.py`
-2. Define a class extending `DependencyParser`
-3. Decorate with `@register_parser`
-4. Add the ecosystem to the `Ecosystem` enum in `models.py`
 
 ```python
 from repo_security_scanner.parsers.base import DependencyParser, register_parser
@@ -563,20 +597,27 @@ class YourParser(DependencyParser):
     ecosystem = Ecosystem.YOUR_ECOSYSTEM
 
     def parse(self, content: str, filename: str) -> list[Dependency]:
-        # Parse the file content and return dependencies
         ...
 ```
 
-That's it. The registry auto-discovers it.
+The registry auto-discovers it. That's it.
 
 ---
 
 ## Roadmap
 
 ### Completed
-- [x] Early warning system (CISA KEV, Hacker News, GitHub Issues, RSS feeds, registry health)
-- [x] File-based caching for early warning sources
-- [x] Noise reduction with relevance scoring and blocklists
+- [x] 8 ecosystem support (Python, Node.js, Java, Go, Ruby, Rust, PHP, Docker)
+- [x] Early warning system (CISA KEV, Hacker News, GitHub Issues, RSS, registry health)
+- [x] Official security release feed monitoring (Node.js, Python, Django, Rails, Go, Spring)
+- [x] Dockerfile + docker-compose scanning with EOL detection
+- [x] AI-powered security analysis (Claude + GPT)
+- [x] Scheduled scanning with cron daemon
+- [x] OSV hydration with parallel `/v1/vulns/{id}` calls
+- [x] CVSS v3.1 vector parsing from spec
+- [x] Version range matching for GitHub Advisory
+- [x] All 4 Node.js lockfiles (npm, yarn, pnpm, bun)
+- [x] 129 tests including real-world vulnerability fixtures
 
 ### Up Next
 - [ ] SBOM export (CycloneDX 1.5 / SPDX 2.3)
@@ -587,27 +628,38 @@ That's it. The registry auto-discovers it.
 ### Planned
 - [ ] Offline mode with downloadable OSV database
 - [ ] Guided remediation (interactive fix suggestions)
-- [ ] License scanning with allowlist-based compliance checks
+- [ ] License scanning with allowlist-based compliance
 - [ ] Monorepo support (scan subdirectories independently)
 - [ ] Pre-commit hook integration
-- [ ] `--watch` mode for continuous scanning during development
-- [ ] Support for `.NET` (NuGet), `Dart` (pub), `Elixir` (mix), `Haskell` (cabal) ecosystems
-- [ ] Container image scanning (Dockerfile dependency detection)
-- [ ] Call graph analysis to detect if vulnerable code is actually reachable
+- [ ] REST API mode (`--serve`) for code review tool integration
+- [ ] EPSS scoring from FIRST.org
+- [ ] Support for `.NET` (NuGet), `Dart` (pub), `Elixir` (mix), `Haskell` (cabal)
 - [ ] GitHub Action published to marketplace
+- [ ] Docker image for CI/CD pipelines
+
+---
+
+## Release History
+
+| Version | Date | Highlights |
+|---------|------|-----------|
+| **v0.3.0** | 2026-03-31 | Dockerfile scanning, AI analysis, scheduled scanning, security release feeds |
+| **v0.2.0** | 2026-03-31 | Critical OSV fix, CVSS parsing, version range matching, pnpm + bun support |
+| **v0.1.0** | 2026-03-31 | Initial release — 7 ecosystems, early warning system, CLI |
+
+See [Releases](https://github.com/yashbarot/security-scanner/releases) for full changelogs.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Whether it's a new ecosystem parser, a bug fix, or a documentation improvement.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Run the tests (`pytest`)
-4. Commit your changes (`git commit -m 'Add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+4. Commit and push
+5. Open a Pull Request
 
 ---
 
@@ -615,7 +667,7 @@ Contributions are welcome! Whether it's a new ecosystem parser, a bug fix, or a 
 
 - **Python** >= 3.9
 - **Internet access** for querying vulnerability databases
-- **No API keys required** (optional GitHub token for higher rate limits)
+- **No API keys required** (optional for AI analysis and higher rate limits)
 
 ## License
 
