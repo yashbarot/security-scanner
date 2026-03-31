@@ -136,7 +136,8 @@ repo-scan /path/to/project               # scan any local project
 repo-scan . -s high                      # only critical & high severity
 repo-scan . --format json -o report.json # JSON report
 repo-scan . --format html -o report.html # HTML report
-repo-scan . --early-warning              # enable early warning sources
+repo-scan . --early-warning              # enable early warning sources (~30-60s)
+repo-scan . --early-warning --scan-depth full  # check ALL deps, no caps (~2-5 min)
 repo-scan . --llm                        # AI-powered security analysis
 repo-scan --help                         # full help with all options
 ```
@@ -328,8 +329,22 @@ repo-scan schedule run
 > Official CVE databases lag behind real-world disclosures by **hours to weeks**. The [axios compromise](https://github.com/axios/axios/issues/10604), the [litellm supply chain attack](https://github.com/BerriAI/litellm/issues/24512), the xz-utils backdoor — all surfaced on blogs, Twitter, and GitHub Issues long before any CVE was assigned.
 
 ```bash
-repo-scan . --early-warning
+repo-scan . --early-warning                      # quick scan (~30-60s, capped)
+repo-scan . --early-warning --scan-depth full     # all deps, no caps (~2-5 min)
+repo-scan . --early-warning --scan-depth deep     # maximum thoroughness (~5-10 min)
 ```
+
+### Scan Depth
+
+Control how thorough the early warning scan is:
+
+| Depth | HN Deps | GitHub Issues Deps | Registry Deps | Est. Time |
+|-------|---------|-------------------|---------------|-----------|
+| `quick` (default) | 30 | 20 | 40 | ~30-60s |
+| `full` | all | all | all | ~2-5 min |
+| `deep` | all | all | all | ~5-10 min |
+
+> **Note**: On second run, cached results make all depths fast. Cache durations range from 30 min (HN/Issues) to 6 hours (CISA KEV).
 
 This activates **6 additional free intelligence sources**:
 
@@ -404,6 +419,7 @@ Scan Options:
       --github-token TOKEN   GitHub token for higher rate limits (or GITHUB_TOKEN env var)
       --skip-crossref        Skip GitHub Advisory cross-reference (faster, OSV only)
       --early-warning        Enable early warning intelligence sources
+      --scan-depth LEVEL     Scan thoroughness: quick (default), full, deep
       --llm                  Enable AI-powered security analysis (requires API key)
       --llm-provider         LLM provider: anthropic (default) or openai
       --clear-cache          Clear cached early warning data
@@ -482,6 +498,7 @@ security-scan:
 | Free & open source | **Yes** | Yes | Yes | Freemium | Free | Yes |
 | No account required | **Yes** | Yes | Yes | No | No | Yes |
 | AI-powered analysis | **Yes** | No | No | No | No | No |
+| Configurable scan depth | **Yes** | No | No | No | No | No |
 | Scheduled scanning | **Yes** | No | No | No | No | No |
 | Early warning (web intel) | **Yes** | No | No | No | No | No |
 | Security release feeds | **Yes** | No | No | No | No | No |
