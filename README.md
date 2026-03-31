@@ -17,7 +17,7 @@ A fast, zero-config CLI tool that scans your project dependencies for known secu
 **One command. Every dependency. Every known vulnerability.**
 
 ```bash
-pip install git+https://github.com/yashbarot/security-scanner.git@v0.1.0
+pip install git+https://github.com/yashbarot/security-scanner.git
 repo-scan /path/to/your/project
 ```
 
@@ -88,11 +88,8 @@ Just point it at any project directory and get instant results.
 ### Install
 
 ```bash
-# Latest version from GitHub
+# From GitHub (always installs latest)
 pip install git+https://github.com/yashbarot/security-scanner.git
-
-# Specific version (recommended for CI/production)
-pip install git+https://github.com/yashbarot/security-scanner.git@v0.1.0
 
 # From source
 git clone https://github.com/yashbarot/security-scanner.git
@@ -100,7 +97,7 @@ cd security-scanner
 pip install .
 ```
 
-> **Versions**: Check [Releases](https://github.com/yashbarot/security-scanner/releases) for all available versions. Use `@v0.1.0` syntax to pin a specific version.
+> **Tip**: For CI/production, you can pin to a specific version tag: `pip install git+...@v0.2.0`. Check [Releases](https://github.com/yashbarot/security-scanner/releases) for available versions.
 
 ### Scan
 
@@ -395,7 +392,7 @@ Drop into any CI pipeline with two lines:
 ```yaml
 - name: Security scan
   run: |
-    pip install git+https://github.com/yashbarot/security-scanner.git@v0.1.0
+    pip install git+https://github.com/yashbarot/security-scanner.git
     repo-scan . -s high
 ```
 
@@ -404,7 +401,7 @@ Drop into any CI pipeline with two lines:
 ```yaml
 security-scan:
   script:
-    - pip install git+https://github.com/yashbarot/security-scanner.git@v0.1.0
+    - pip install git+https://github.com/yashbarot/security-scanner.git
     - repo-scan . -s high
 ```
 
@@ -414,12 +411,11 @@ security-scan:
 - step:
     name: Security scan
     script:
-      - pip install git+https://github.com/yashbarot/security-scanner.git@v0.1.0
+      - pip install git+https://github.com/yashbarot/security-scanner.git
       - repo-scan . -s high
 ```
 
-> Pin to a specific version tag (e.g. `@v0.1.0`) in CI to avoid unexpected changes.
-> Check [Releases](https://github.com/yashbarot/security-scanner/releases) for the latest version.
+> **Tip**: Pin to a specific version tag (e.g. `@v0.2.0`) in CI for reproducible builds.
 > The exit code `1` on critical/high findings will automatically fail the pipeline step.
 
 ---
