@@ -5,6 +5,7 @@ import os
 import requests
 
 from repo_security_scanner.models import Dependency, Ecosystem, Severity, Vulnerability
+from repo_security_scanner.version_utils import clean_version, version_in_range
 from repo_security_scanner.vulndb.base import VulnDatabase
 
 GITHUB_API_URL = "https://api.github.com/advisories"
@@ -78,6 +79,13 @@ class GitHubAdvisoryDatabase(VulnDatabase):
             for vuln_pkg in adv.get("vulnerabilities", []):
                 pkg = vuln_pkg.get("package", {})
                 if pkg.get("name", "").lower() == dep_name_lower:
+                    # Check if dependency version falls within vulnerable range
+                    vuln_range = vuln_pkg.get("vulnerable_version_range", "")
+                    dep_version = clean_version(dep.version)
+                    if dep_version and vuln_range:
+                        if not version_in_range(dep_version, vuln_range):
+                            continue  # Version not in vulnerable range
+
                     severity = Severity.from_string(adv.get("severity", "unknown"))
                     refs = [adv.get("html_url", "")]
                     for ref in adv.get("references", []):
