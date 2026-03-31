@@ -27,7 +27,22 @@ repo-scan /path/to/your/project
 
 ---
 
-## What's New in v0.3.0
+## What's New
+
+### v0.3.1 — Severity Accuracy Fix
+
+Most UNKNOWN severity entries are now resolved. Root causes fixed:
+
+| Bug | Impact | Fix |
+|-----|--------|-----|
+| **MODERATE not mapped to MEDIUM** | GitHub Advisory uses "MODERATE" — our enum didn't recognize it, every MODERATE CVE showed UNKNOWN | `from_string()` now maps MODERATE -> MEDIUM |
+| **Security feed flooding** | One Node.js digest created 973 duplicate UNKNOWN entries across all npm deps | Runtime feeds now create 1 entry per article, not 1 per dep |
+| **Hydration fallback returned stubs** | Network failures produced empty data parsed as UNKNOWN | Returns empty instead of unparseable stubs |
+| **Severity extraction crashes on None** | `from_string(None)` crashed silently, skipped valid data | Guarded with `isinstance(str)` checks |
+| **GitHub Advisory only fetched critical,high** | All MEDIUM/LOW CVEs missed from cross-reference | Removed severity filter, fetches all |
+| **Fix version from wrong package** | Multi-package CVE returned wrong package's fix | Now filters by package name |
+
+### v0.3.0 — Major Features
 
 | Feature | What It Does | Unique? |
 |---------|-------------|---------|
@@ -35,8 +50,8 @@ repo-scan /path/to/your/project
 | **AI security analysis** | `--llm` flag sends findings to Claude/GPT for priority ranking, mitigation steps, and posture assessment | No other open-source scanner has this |
 | **Scheduled scanning** | `repo-scan schedule add/run` — cron-based daemon scans projects on schedule, alerts on new critical vulns | Solves the "code hasn't been touched in months" problem |
 | **Security release feeds** | Auto-monitors Node.js, Python, Django, Rails, Go, Spring official security release pages | **No other scanner does this** — catches patches before CVE databases update |
-
-> **v0.2.0 fixes** (included): OSV now returns full severity/descriptions/fix versions (was all UNKNOWN), CVSS v3.1 vector parsing, version range matching for GitHub Advisory, pnpm + bun lockfile support.
+| **Configurable scan depth** | `--scan-depth quick\|full\|deep` controls speed vs thoroughness | Caps configurable per source |
+| **Parallel source queries** | All vuln sources queried concurrently — 5+ min reduced to ~30-60s | ThreadPoolExecutor throughout |
 
 ---
 
@@ -660,8 +675,9 @@ The registry auto-discovers it. That's it.
 
 | Version | Date | Highlights |
 |---------|------|-----------|
-| **v0.3.0** | 2026-03-31 | Dockerfile scanning, AI analysis, scheduled scanning, security release feeds |
-| **v0.2.0** | 2026-03-31 | Critical OSV fix, CVSS parsing, version range matching, pnpm + bun support |
+| **v0.3.1** | 2026-03-31 | Severity accuracy fix — MODERATE mapping, 7 data pipeline bugs, feed flooding fix |
+| **v0.3.0** | 2026-03-31 | Dockerfile scanning, AI analysis, scheduled scanning, security release feeds, `--scan-depth` |
+| **v0.2.0** | 2026-03-31 | Critical OSV hydration fix, CVSS v3.1 parsing, version range matching, pnpm + bun |
 | **v0.1.0** | 2026-03-31 | Initial release — 7 ecosystems, early warning system, CLI |
 
 See [Releases](https://github.com/yashbarot/security-scanner/releases) for full changelogs.
