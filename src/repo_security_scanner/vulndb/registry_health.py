@@ -9,19 +9,23 @@ from repo_security_scanner.models import Dependency, Ecosystem, Severity, Vulner
 from repo_security_scanner.vulndb.base import VulnDatabase
 
 CACHE_TTL = 3600  # 1 hour
+DEFAULT_MAX_DEPS = 40
 
 
 class RegistryHealthDatabase(VulnDatabase):
-    def __init__(self, cache: FileCache = None, timeout: int = 15):
+    def __init__(self, cache: FileCache = None, timeout: int = 15, max_deps: int = None):
         self.cache = cache or FileCache()
         self.timeout = timeout
+        self.max_deps = max_deps if max_deps is not None else DEFAULT_MAX_DEPS
         self.session = requests.Session()
 
     def query_batch(self, dependencies: list[Dependency]) -> dict[str, list[Vulnerability]]:
         import concurrent.futures
 
         results: dict[str, list[Vulnerability]] = {}
-        checkable = [d for d in dependencies if d.ecosystem in (Ecosystem.PYPI, Ecosystem.NPM)][:40]
+        checkable = [d for d in dependencies if d.ecosystem in (Ecosystem.PYPI, Ecosystem.NPM)]
+        if self.max_deps > 0:
+            checkable = checkable[:self.max_deps]
 
         def _check_one(dep):
             if dep.ecosystem == Ecosystem.PYPI:

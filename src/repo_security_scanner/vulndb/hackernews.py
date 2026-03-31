@@ -13,19 +13,23 @@ HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search"
 CACHE_TTL = 1800  # 30 minutes
 MIN_POINTS = 5
 RELEVANCE_THRESHOLD = 0.5
+DEFAULT_MAX_DEPS = 30
 
 
 class HackerNewsDatabase(VulnDatabase):
-    def __init__(self, cache: FileCache = None, timeout: int = 15):
+    def __init__(self, cache: FileCache = None, timeout: int = 15, max_deps: int = None):
         self.cache = cache or FileCache()
         self.timeout = timeout
+        self.max_deps = max_deps if max_deps is not None else DEFAULT_MAX_DEPS
         self.session = requests.Session()
 
     def query_batch(self, dependencies: list[Dependency]) -> dict[str, list[Vulnerability]]:
         import concurrent.futures
 
         results: dict[str, list[Vulnerability]] = {}
-        searchable = [d for d in dependencies if should_search_web(d)][:30]  # Cap at 30
+        searchable = [d for d in dependencies if should_search_web(d)]
+        if self.max_deps > 0:
+            searchable = searchable[:self.max_deps]
 
         def _query_one(dep):
             return dep.key, self._search(dep)

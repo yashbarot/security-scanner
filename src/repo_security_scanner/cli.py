@@ -93,6 +93,18 @@ HELP_TEXT = textwrap.dedent("""\
                                  GitHub Issues, RSS security blogs, and
                                  PyPI/npm registry health checks.
 
+      --scan-depth LEVEL         How thorough the early warning scan should be.
+                                 Choices: quick (default), full, deep
+                                   quick — Capped: 30 HN, 20 GitHub Issues,
+                                           40 registry checks (~30-60s)
+                                   full  — No caps, checks all deps (~2-5 min)
+                                   deep  — No caps + all optional sources
+                                           (~5-10 min for large projects)
+
+      --llm                      Generate AI-powered security analysis using
+                                 Claude (default) or GPT. Requires API key.
+      --llm-provider PROVIDER    LLM provider: anthropic (default) or openai.
+
       --clear-cache              Clear cached early warning data stored at
                                  ~/.cache/security-scanner/
 
@@ -220,6 +232,7 @@ def main():
     parser.add_argument("--github-token", help=argparse.SUPPRESS)
     parser.add_argument("--skip-crossref", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--early-warning", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--scan-depth", choices=["quick", "full", "deep"], default="quick", help=argparse.SUPPRESS)
     parser.add_argument("--llm", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--llm-provider", choices=["anthropic", "openai"], default="anthropic", help=argparse.SUPPRESS)
     parser.add_argument("--clear-cache", action="store_true", help=argparse.SUPPRESS)
@@ -257,7 +270,6 @@ def main():
 
     # Early warning sources
     if args.early_warning:
-        from repo_security_scanner.cache import FileCache
         from repo_security_scanner.vulndb.cisa_kev import CISAKEVDatabase
         from repo_security_scanner.vulndb.registry_health import RegistryHealthDatabase
         from repo_security_scanner.vulndb.hackernews import HackerNewsDatabase
@@ -265,12 +277,26 @@ def main():
         from repo_security_scanner.vulndb.rss_feeds import RSSFeedDatabase
         from repo_security_scanner.vulndb.opencve import OpenCVEDatabase
 
-        cache = FileCache()
+        # Scan depth controls how many deps are checked per source
+        # quick (default): capped for speed | full: no cap | deep: no cap + extra sources
+        depth_caps = {
+            "quick": {"hn": 30, "gh_issues": 20, "registry": 40},
+            "full":  {"hn": 0, "gh_issues": 0, "registry": 0},   # 0 = no cap
+            "deep":  {"hn": 0, "gh_issues": 0, "registry": 0},
+        }
+        caps = depth_caps.get(args.scan_depth, depth_caps["quick"])
+
+        if args.scan_depth != "quick":
+            _dep_count = "all"
+            _time_note = "2-5 min" if args.scan_depth == "full" else "5-10 min"
+            console.print(f"[dim]Scan depth: {args.scan_depth} — checking {_dep_count} dependencies per source (est. {_time_note})[/dim]")
+
+        cache = _cache
         vuln_sources.extend([
             CISAKEVDatabase(cache=cache),
-            RegistryHealthDatabase(cache=cache),
-            HackerNewsDatabase(cache=cache),
-            GitHubIssuesDatabase(token=args.github_token, cache=cache),
+            RegistryHealthDatabase(cache=cache, max_deps=caps["registry"]),
+            HackerNewsDatabase(cache=cache, max_deps=caps["hn"]),
+            GitHubIssuesDatabase(token=args.github_token, cache=cache, max_deps=caps["gh_issues"]),
             RSSFeedDatabase(cache=cache),
         ])
         if os.environ.get("OPENCVE_USER"):

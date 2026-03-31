@@ -14,13 +14,15 @@ from repo_security_scanner.vulndb.base import VulnDatabase
 SEARCH_URL = "https://api.github.com/search/issues"
 CACHE_TTL = 1800  # 30 minutes
 SCORE_THRESHOLD = 0.5
+DEFAULT_MAX_DEPS = 20
 
 
 class GitHubIssuesDatabase(VulnDatabase):
-    def __init__(self, token: str = None, cache: FileCache = None, timeout: int = 15):
+    def __init__(self, token: str = None, cache: FileCache = None, timeout: int = 15, max_deps: int = None):
         self.token = token or os.environ.get("GITHUB_TOKEN")
         self.cache = cache or FileCache()
         self.timeout = timeout
+        self.max_deps = max_deps if max_deps is not None else DEFAULT_MAX_DEPS
         self.session = requests.Session()
         self.session.headers["Accept"] = "application/vnd.github+json"
         if self.token:
@@ -28,7 +30,9 @@ class GitHubIssuesDatabase(VulnDatabase):
 
     def query_batch(self, dependencies: list[Dependency]) -> dict[str, list[Vulnerability]]:
         results: dict[str, list[Vulnerability]] = {}
-        searchable = [d for d in dependencies if should_search_web(d)][:20]  # Cap at 20 (rate limit sensitive)
+        searchable = [d for d in dependencies if should_search_web(d)]
+        if self.max_deps > 0:
+            searchable = searchable[:self.max_deps]
 
         for dep in searchable:
             vulns = self._search(dep)
