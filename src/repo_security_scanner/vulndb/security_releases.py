@@ -77,15 +77,44 @@ class SecurityReleasesDatabase(VulnDatabase):
                 if not articles:
                     continue
 
-                # Match articles against dependencies
-                for dep in dependencies:
-                    if dep.ecosystem != eco:
-                        continue
-                    matched = self._match_articles(dep, articles, feed_name)
-                    if matched:
-                        if dep.key not in results:
-                            results[dep.key] = []
-                        results[dep.key].extend(matched)
+                # For runtime feeds (nodejs, cpython, golang), create ONE entry
+                # per article attached to the first matching dep — don't fan out
+                # to every dep in the ecosystem (that causes 973 duplicates).
+                is_runtime_feed = feed_name in ("nodejs", "cpython", "golang")
+
+                if is_runtime_feed:
+                    # Find the first dep in this ecosystem to attach results to
+                    first_dep = next((d for d in dependencies if d.ecosystem == eco), None)
+                    if first_dep:
+                        seen_articles = set()
+                        for article in articles:
+                            aid = article.get("link", article.get("title", ""))
+                            if aid not in seen_articles:
+                                seen_articles.add(aid)
+                                article_hash = hashlib.md5(aid.encode()).hexdigest()[:8]
+                                vuln = Vulnerability(
+                                    id=f"SECREL-{feed_name}-{article_hash}",
+                                    summary=f"[{feed_name.upper()}] {article['title'][:180]}",
+                                    severity=Severity.UNKNOWN,
+                                    affected_versions="see advisory",
+                                    fixed_version=None,
+                                    references=[article.get("link", "")],
+                                    source=f"security_releases_{feed_name}",
+                                    confidence="confirmed",
+                                )
+                                if first_dep.key not in results:
+                                    results[first_dep.key] = []
+                                results[first_dep.key].append(vuln)
+                else:
+                    # For framework feeds (django, rails, spring), match by dep name
+                    for dep in dependencies:
+                        if dep.ecosystem != eco:
+                            continue
+                        matched = self._match_articles(dep, articles, feed_name)
+                        if matched:
+                            if dep.key not in results:
+                                results[dep.key] = []
+                            results[dep.key].extend(matched)
 
         return results
 

@@ -97,13 +97,13 @@ class TestHydration:
         result = db._hydrate_vulns([])
         assert result == []
 
-    def test_hydrate_returns_stubs_on_failure(self):
+    def test_hydrate_returns_empty_on_failure(self):
         db = OSVDatabase()
         stubs = [{"id": "GHSA-fail"}]
 
         with patch("repo_security_scanner.vulndb.osv.requests.get", side_effect=Exception("Network error")):
             result = db._hydrate_vulns(stubs)
-            assert result == stubs  # Falls back to original stubs
+            assert result == []  # Returns empty, not stubs with incomplete data
 
     def test_parse_vulns_with_hydrated_data(self):
         db = OSVDatabase()

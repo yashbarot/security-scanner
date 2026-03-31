@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "security-scanner"
-version = "0.3.0"
+version = "0.3.1"
 description = "Scan local repositories for dependency security vulnerabilities across 7 ecosystems with early warning intelligence"
 readme = "README.md"
 license = {text = "MIT"}

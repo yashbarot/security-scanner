@@ -73,7 +73,7 @@ class OSVDatabase(VulnDatabase):
                     # Batch API returns only {id, modified} stubs.
                     # Hydrate with full details from /v1/vulns/{id}.
                     raw_vulns = self._hydrate_vulns(raw_vulns)
-                vulns = self._parse_vulns(raw_vulns)
+                vulns = self._parse_vulns(raw_vulns, package_name=dep.name)
                 if vulns:
                     results[dep.key] = vulns
 
@@ -109,7 +109,9 @@ class OSVDatabase(VulnDatabase):
                 if result:
                     full_vulns.append(result)
 
-        return full_vulns if full_vulns else vuln_stubs
+        # Don't fall back to stubs — they have no usable data and produce
+        # UNKNOWN severity / "No description" entries that pollute reports.
+        return full_vulns
 
     def _clean_version(self, version: str) -> str | None:
         """Extract a clean version string, returning None for ranges."""
@@ -126,14 +128,14 @@ class OSVDatabase(VulnDatabase):
             return v
         return None
 
-    def _parse_vulns(self, vulns: list[dict]) -> list[Vulnerability]:
+    def _parse_vulns(self, vulns: list[dict], package_name: str = None) -> list[Vulnerability]:
         parsed = []
         for vuln in vulns:
             vuln_id = vuln.get("id", "")
             summary = vuln.get("summary", vuln.get("details", "No description available"))
             severity = self._extract_severity(vuln)
-            affected_str = self._extract_affected_versions(vuln)
-            fixed = self._extract_fixed_version(vuln)
+            affected_str = self._extract_affected_versions(vuln, package_name=package_name)
+            fixed = self._extract_fixed_version(vuln, package_name=package_name)
             refs = [r.get("url", "") for r in vuln.get("references", []) if r.get("url")]
 
             parsed.append(Vulnerability(
@@ -149,9 +151,10 @@ class OSVDatabase(VulnDatabase):
 
     def _extract_severity(self, vuln: dict) -> Severity:
         # Check database_specific severity (most reliable for GitHub Advisory sourced data)
-        db_specific = vuln.get("database_specific", {})
-        if "severity" in db_specific:
-            return Severity.from_string(db_specific["severity"])
+        db_specific = vuln.get("database_specific") or {}
+        sev_val = db_specific.get("severity")
+        if isinstance(sev_val, str) and sev_val:
+            return Severity.from_string(sev_val)
 
         # Check CVSS from severity array
         for sev in vuln.get("severity", []):
@@ -171,16 +174,18 @@ class OSVDatabase(VulnDatabase):
 
         # Check affected[].ecosystem_specific
         for affected in vuln.get("affected", []):
-            eco_specific = affected.get("ecosystem_specific", {})
-            if "severity" in eco_specific:
-                return Severity.from_string(eco_specific["severity"])
+            eco_specific = affected.get("ecosystem_specific") or {}
+            sev_val = eco_specific.get("severity")
+            if isinstance(sev_val, str) and sev_val:
+                return Severity.from_string(sev_val)
 
-        # Check affected[].database_specific
+        # Check affected[].database_specific.cvss
         for affected in vuln.get("affected", []):
-            db = affected.get("database_specific", {})
-            if "cvss" in db:
+            db = affected.get("database_specific") or {}
+            cvss_data = db.get("cvss")
+            if isinstance(cvss_data, dict):
                 try:
-                    score = float(db["cvss"].get("score", 0))
+                    score = float(cvss_data.get("score", 0))
                     if score >= 9.0:
                         return Severity.CRITICAL
                     elif score >= 7.0:
@@ -189,8 +194,13 @@ class OSVDatabase(VulnDatabase):
                         return Severity.MEDIUM
                     else:
                         return Severity.LOW
-                except (ValueError, TypeError, AttributeError):
+                except (ValueError, TypeError):
                     pass
+
+            # Also check database_specific.severity at affected level
+            sev_val = db.get("severity")
+            if isinstance(sev_val, str) and sev_val:
+                return Severity.from_string(sev_val)
 
         return Severity.UNKNOWN
 
@@ -256,9 +266,15 @@ class OSVDatabase(VulnDatabase):
         except (KeyError, ValueError, ZeroDivisionError):
             return None
 
-    def _extract_affected_versions(self, vuln: dict) -> str:
+    def _extract_affected_versions(self, vuln: dict, package_name: str = None) -> str:
         ranges_str = []
         for affected in vuln.get("affected", []):
+            # Filter to matching package if specified
+            if package_name:
+                pkg = affected.get("package", {})
+                pkg_name = pkg.get("name", "")
+                if pkg_name and pkg_name.lower() != package_name.lower():
+                    continue
             for r in affected.get("ranges", []):
                 events = r.get("events", [])
                 introduced = None
@@ -280,10 +296,23 @@ class OSVDatabase(VulnDatabase):
                     ranges_str.append(f"{versions[0]} ... {versions[-1]}")
         return "; ".join(ranges_str) if ranges_str else "unknown"
 
-    def _extract_fixed_version(self, vuln: dict) -> str | None:
+    def _extract_fixed_version(self, vuln: dict, package_name: str = None) -> str | None:
+        # First pass: try to match the specific package
         for affected in vuln.get("affected", []):
+            if package_name:
+                pkg = affected.get("package", {})
+                pkg_name = pkg.get("name", "")
+                if pkg_name and pkg_name.lower() != package_name.lower():
+                    continue
             for r in affected.get("ranges", []):
                 for event in r.get("events", []):
                     if "fixed" in event:
                         return event["fixed"]
+        # Fallback: return any fixed version if package-specific match failed
+        if package_name:
+            for affected in vuln.get("affected", []):
+                for r in affected.get("ranges", []):
+                    for event in r.get("events", []):
+                        if "fixed" in event:
+                            return event["fixed"]
         return None

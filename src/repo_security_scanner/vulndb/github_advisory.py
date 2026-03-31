@@ -61,7 +61,6 @@ class GitHubAdvisoryDatabase(VulnDatabase):
         params = {
             "ecosystem": ecosystem,
             "per_page": 100,
-            "severity": "critical,high",
         }
         try:
             resp = self.session.get(GITHUB_API_URL, params=params, timeout=self.timeout)
